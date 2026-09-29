@@ -18,3 +18,9 @@ steps:
       test -f site/styles.css || (echo "Missing styles.css" && exit 1)  
       echo "All required files found."                                 
     displayName: 'Validate site files'
+
+  - task: PublishBuildArtifacts@1              
+    inputs:
+      PathtoPublish: 'site'                 
+      ArtifactName: 'website'                
+    displayName: 'Publish website artifact'

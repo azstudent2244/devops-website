@@ -12,5 +12,9 @@ pool:
   name: Default
 
 steps:
-- script: echo Hello, world!
-  displayName: 'Say hello'
+  - script: |
+      echo "Validating site files..."                                   
+      test -f site/index.html || (echo "Missing index.html" && exit 1)   
+      test -f site/styles.css || (echo "Missing styles.css" && exit 1)  
+      echo "All required files found."                                 
+    displayName: 'Validate site files'

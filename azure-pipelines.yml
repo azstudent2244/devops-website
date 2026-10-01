@@ -24,3 +24,22 @@ steps:
       PathtoPublish: 'site'                 
       ArtifactName: 'website'                
     displayName: 'Publish website artifact'
+
+  - stage: Provision                                           
+  displayName: 'Provision Azure infrastructure'
+  jobs:
+    - job: TerraformApply
+      pool:
+        name: Default                                            
+      steps:
+        - task: AzureCLI@2                                       
+          displayName: 'Terraform init, plan, apply'
+          inputs:
+            azureSubscription: 'azure-sub-connection'    
+            scriptType: 'bash'                                    
+            scriptLocation: 'inlineScript'                      
+            inlineScript: |                                       
+              cd infra
+              terraform init                                      
+              terraform plan -out=tfplan                          
+              terraform apply -auto-approve tfplan

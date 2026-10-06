@@ -1,45 +1,66 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 trigger:
   branches:
     include:
       - main
 
-pool:
-  name: Default
+stages:
+  - stage: CI
+    displayName: 'Build and validate'
+    jobs:
+      - job: Validate
+        pool:
+          name: Default
+        steps:
+          - bash: |
+              echo "Validating site files..."
+              test -f site/index.html || (echo "Missing index.html" && exit 1)
+              test -f site/styles.css || (echo "Missing styles.css" && exit 1)
+              echo "All required files found."
+            displayName: 'Validate site files'
 
-steps:
-  - bash: |
-      echo "Validating site files..."                                   
-      test -f site/index.html || (echo "Missing index.html" && exit 1)   
-      test -f site/styles.css || (echo "Missing styles.css" && exit 1)  
-      echo "All required files found."                                 
-    displayName: 'Validate site files'
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: 'site'
+              ArtifactName: 'website'
+            displayName: 'Publish website artifact'
 
-  - task: PublishBuildArtifacts@1              
-    inputs:
-      PathtoPublish: 'site'                 
-      ArtifactName: 'website'                
-    displayName: 'Publish website artifact'
+  - stage: Provision
+    displayName: 'Provision Azure infrastructure'
+    dependsOn: CI
+    jobs:
+      - job: TerraformApply
+        pool:
+          name: Default
+        steps:
+          - task: AzureCLI@2
+            displayName: 'Terraform init, plan, apply'
+            inputs:
+              azureSubscription: 'azure-sub-connection'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+                cd infra
+                terraform init
+                terraform plan -out=tfplan
+                terraform apply -auto-approve tfplan
 
-  - stage: Provision                                           
-  displayName: 'Provision Azure infrastructure'
-  jobs:
-    - job: TerraformApply
-      pool:
-        name: Default                                            
-      steps:
-        - task: AzureCLI@2                                       
-          displayName: 'Terraform init, plan, apply'
-          inputs:
-            azureSubscription: 'azure-sub-connection'    
-            scriptType: 'bash'                                    
-            scriptLocation: 'inlineScript'                      
-            inlineScript: |                                       
-              cd infra
-              terraform init                                      
-              terraform plan -out=tfplan                          
-              terraform apply -auto-approve tfplan
+      - job: DeploySite
+        dependsOn: TerraformApply
+        pool:
+          name: Default
+        steps:
+          - task: AzureCLI@2
+            displayName: 'Upload site files to $web'
+            inputs:
+              azureSubscription: 'azure-sub-connection'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+                cd infra
+                terraform init
+                ACCT=$(terraform output -raw storage_account_name)
+                cd ..
+                KEY=$(az storage account keys list --account-name "$ACCT" --query "[0].value" -o tsv)
+                az storage blob upload-batch --account-name "$ACCT" --account-key "$KEY" --destination '$web' --source site --overwrite

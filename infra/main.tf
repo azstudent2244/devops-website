@@ -2,7 +2,7 @@ terraform {
   required_providers {
     azurerm = {                                               
       source  = "hashicorp/azurerm"                            
-      version = "~> 3.0"                                      
+      version = "~> 4.0"                                      
     }
   }
 
@@ -29,10 +29,11 @@ resource "azurerm_storage_account" "site" {
   location                 = azurerm_resource_group.site.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
+}
 
-  static_website {                                              
-    index_document = "index.html"                               
-  }
+resource "azurerm_storage_account_static_website" "site" {
+  storage_account_id = azurerm_storage_account.site.id
+  index_document     = "index.html"
 }
 
 output "website_endpoint" {

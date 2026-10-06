@@ -18,6 +18,11 @@ provider "azurerm" {
   use_cli = true                                              
 }
 
+resource "azurerm_resource_group" "site1" {
+  name     = "rg-devops-site1"                                  
+  location = "westeurope"                                      
+}
+
 resource "azurerm_resource_group" "site" {
   name     = "rg-devops-site"                                  
   location = "westeurope"                                      

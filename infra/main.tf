@@ -18,15 +18,57 @@ provider "azurerm" {
   use_cli = true                                              
 }
 
-resource "azurerm_resource_group" "site1" {
-  name     = "rg-devops-site1"                                  
-  location = "westeurope"                                      
+variable "name_suffix" {
+  type = string
+  description = "Short unique suffix"
 }
 
 resource "azurerm_resource_group" "site" {
   name     = "rg-devops-site"                                  
   location = "westeurope"                                      
 }
+
+resource "azurerm_service_plan" "site" {
+  name = "asp-devops-site"
+  resource_group_name = azurerm_resource_group.site.name
+  location = azurerm_resource_group.site.location
+  os_type = "Linux"
+  sku_name = "B1"
+}
+
+resource "azurerm_linux_web_app" "site" {
+  for_each = toset(["dev", "test", "prod"])
+  name = "app-devops-${each.key}-${var.name_suffix}"
+  resource_group_name = azurerm_resource_group.site.name
+  location = azurerm_service_plan.site.location
+  service_plan_id = azurerm_service_plan.site.id
+  https_only = true
+
+  site_config {
+    application_stack {
+      php_version = "8.3"
+    }
+  }
+  app_settings = {
+    ENVIRONMENT_NAME = each.key 
+  }
+
+  tags = {
+    environment = each.key
+  }
+
+
+}
+
+
+
+
+
+
+
+
+
+
 
 resource "azurerm_storage_account" "site" {
   name                     = "st1devops2sitejsm01"                

@@ -58,5 +58,5 @@ resource "azurerm_linux_web_app" "site" {
   }
 }
 output "webapp_urls" {
-  value = {for env, app in azurerm_azurerm_linux_web_app.site : env=> "https://${app.default_hostname}" }
+  value = {for env, app in azurerm_linux_web_app.site : env=> "https://${app.default_hostname}" }
 }

@@ -91,4 +91,73 @@ stages:
                     inlineScript: |
                       HOST=$(az webapp show --resource-group rg-devops-site --name app-devops-dev-$(nameSuffix) --query defaultHostName -o tsv | tr -d '\r')
                       echo "Checking https://$HOST/"
-                      curl --fail --silent --show-error --retry 6 --retry-delay 10 "https://$HOST/" | grep -i "hello devops"
+                      curl --fail --silent --show-error --retry 6 --retry-delay 10 "https://$HOST/" | grep -i "Hello, World!"
+
+  - stage: Test
+    displayName: 'Deploy to test'
+    dependsOn: Dev
+    jobs:
+      - deployment: DeployTest
+        displayName: 'Deploy website to test'
+        pool:
+          name: Default
+        environment: 'test'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: website
+                - task: AzureCLI@2
+                  displayName: 'Zip deploy to test web app'
+                  inputs:
+                    azureSubscription: 'azure-sub-connection'
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    workingDirectory: '$(Pipeline.Workspace)/website'
+                    inlineScript: |
+                      az webapp deploy --resource-group rg-devops-site --name app-devops-test-$(nameSuffix) --src-path site.zip --type zip
+                - task: AzureCLI@2
+                  displayName: 'Smoke test (test)'
+                  inputs:
+                    azureSubscription: 'azure-sub-connection'
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      HOST=$(az webapp show --resource-group rg-devops-site --name app-devops-test-$(nameSuffix) --query defaultHostName -o tsv | tr -d '\r')
+                      echo "Checking https://$HOST/"
+                      curl --fail --silent --show-error --retry 6 --retry-delay 10 "https://$HOST/" | grep -i "Hello, World!"
+  - stage: Prod
+    displayName: 'Deploy to prod'
+    dependsOn: Test
+    jobs:
+      - deployment: DeployProd
+        displayName: 'Deploy website to prod'
+        pool:
+          name: Default
+        environment: 'prod'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: website
+                - task: AzureCLI@2
+                  displayName: 'Zip deploy to prod web app'
+                  inputs:
+                    azureSubscription: 'azure-sub-connection'
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    workingDirectory: '$(Pipeline.Workspace)/website'
+                    inlineScript: |
+                      az webapp deploy --resource-group rg-devops-site --name app-devops-prod-$(nameSuffix) --src-path site.zip --type zip
+                - task: AzureCLI@2
+                  displayName: 'Smoke test (prod)'
+                  inputs:
+                    azureSubscription: 'azure-sub-connection'
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      HOST=$(az webapp show --resource-group rg-devops-site --name app-devops-prod-$(nameSuffix) --query defaultHostName -o tsv | tr -d '\r')
+                      echo "Checking https://$HOST/"
+                      curl --fail --silent --show-error --retry 6 --retry-delay 10 "https://$HOST/" | grep -i "Hello, World!"

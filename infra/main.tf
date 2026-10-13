@@ -56,37 +56,7 @@ resource "azurerm_linux_web_app" "site" {
   tags = {
     environment = each.key
   }
-
-
 }
-
-
-
-
-
-
-
-
-
-
-
-resource "azurerm_storage_account" "site" {
-  name                     = "st1devops2sitejsm01"                
-  resource_group_name      = azurerm_resource_group.site.name    
-  location                 = azurerm_resource_group.site.location
-  account_tier             = "Standard"
-  account_replication_type = "LRS"
-}
-
-resource "azurerm_storage_account_static_website" "site" {
-  storage_account_id = azurerm_storage_account.site.id
-  index_document     = "index.html"
-}
-
-output "website_endpoint" {
-  value = azurerm_storage_account.site.primary_web_endpoint      
-}
-
-output "storage_account_name" {
-  value = azurerm_storage_account.site.name                     
+output "webapp_urls" {
+  value = {for env, app in azurerm_azurerm_linux_web_app.site : env=> "https://${app.default_hostname}" }
 }

@@ -3,6 +3,9 @@ trigger:
     include:
       - main
 
+variables:
+  nameSuffix: 'jsm01' 
+
 stages:
   - stage: CI
     displayName: 'Build and validate'
@@ -18,11 +21,20 @@ stages:
               echo "All required files found."
             displayName: 'Validate site files'
 
-          - task: PublishBuildArtifacts@1
+          - task: ArchiveFiles@2                         
+            displayName: 'Zip the website'
             inputs:
-              PathtoPublish: 'site'
-              ArtifactName: 'website'
+              rootFolderOrFile: '$(Build.SourcesDirectory)/site'
+              includeRootFolder: false                   
+              archiveType: 'zip'
+              archiveFile: '$(Build.ArtifactStagingDirectory)/site.zip'
+              replaceExistingArchive: true
+
+          - task: PublishPipelineArtifact@1             
             displayName: 'Publish website artifact'
+            inputs:
+              targetPath: '$(Build.ArtifactStagingDirectory)/site.zip'
+              artifact: 'website'
 
   - stage: Provision
     displayName: 'Provision Azure infrastructure'
@@ -40,6 +52,7 @@ stages:
               scriptLocation: 'inlineScript'
               inlineScript: |
                 export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+                export TF_VAR_name_suffix=$(nameSuffix)
                 cd infra
                 terraform init
                 terraform plan -out=tfplan

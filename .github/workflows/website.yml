@@ -1,0 +1,35 @@
+name: Website CI/CD
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+
+  env:
+    NAME_SUFFIX: 'jsm01'
+    RESROURCE_GROUP: 'rg-devops-site'
+    TF_VERSION: '1.15.8'
+
+    jobs:
+      ci:
+        name: Build and validate
+        runs-on: ubuntu-latest
+        steps:
+          - name: Check out the repository
+            uses: actions/checkout@v4
+          - name: Validate site files
+            run: |                                                 
+                 echo "Validating site files..."                      
+                 test -f site/index.html || (echo "Missing index.html" && exit 1) 
+                 test -f site/styles.css || (echo "Missing styles.css" && exit 1) 
+                 echo "All required files found."  
+          - name: Zip the website
+            run: cd site && zip -r ../site.zip
+          - name: Publish website artifact
+            uses: actions/upload-artifact@v4
+            with:
+              name: website
+              path: site.zip

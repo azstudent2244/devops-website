@@ -8,12 +8,12 @@ permissions:
   contents: read
   id-token: write
 
-  env:
-    NAME_SUFFIX: 'jsm01'
-    RESROURCE_GROUP: 'rg-devops-site'
-    TF_VERSION: '1.15.8'
+env:
+  NAME_SUFFIX: 'jsm01'
+  RESROURCE_GROUP: 'rg-devops-site'
+  TF_VERSION: '1.15.8'
 
-  jobs:
+jobs:
       ci:
         name: Build and validate
         runs-on: ubuntu-latest

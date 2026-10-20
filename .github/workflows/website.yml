@@ -34,7 +34,7 @@ jobs:
               name: website
               path: site.zip
 
-        provision:                                                     
+      provision:                                                     
           name: Provision Azure infrastructure                        
           needs: ci                                                   
           runs-on: ubuntu-latest                                        

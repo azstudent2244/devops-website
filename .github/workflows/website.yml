@@ -33,3 +33,31 @@ jobs:
             with:
               name: website
               path: site.zip
+
+provision:                                                     
+    name: Provision Azure infrastructure                        
+    needs: ci                                                   
+    runs-on: ubuntu-latest                                        
+    steps:                                                     
+      - name: Check out the repository                         
+        uses: actions/checkout@v4                                
+      - name: Log in to Azure (OIDC)                             
+        uses: azure/login@v2                                     
+        with:                                                    
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}              
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}              
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }} 
+      - name: Install Terraform                                  
+        uses: hashicorp/setup-terraform@v3                       
+        with:                                                    
+          terraform_version: ${{ env.TF_VERSION }}                
+          terraform_wrapper: false                               
+      - name: Terraform init, plan, apply                        
+        working-directory: infra                                
+        env:                                                     
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }} 
+          TF_VAR_name_suffix: ${{ env.NAME_SUFFIX }}              
+        run: |                                                   
+          terraform init                                          
+          terraform plan -out=tfplan                           
+          terraform apply -auto-approve tfplan

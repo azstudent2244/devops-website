@@ -61,3 +61,78 @@ jobs:
                 terraform init                                          
                 terraform plan -out=tfplan                           
                 terraform apply -auto-approve tfplan
+
+
+      deploy-dev:                                                    
+           name: Deploy to dev                                         
+           needs: provision                                             
+           runs-on: ubuntu-latest                                     
+           environment: dev                                              
+           steps:                                                        
+            - name: Download the website artifact                      
+              uses: actions/download-artifact@v4                       
+              with:                                                    
+                name: website                                          
+            - name: Log in to Azure (OIDC)                             
+              uses: azure/login@v2                                     
+              with:                                                     
+                client-id: ${{ secrets.AZURE_CLIENT_ID }}               
+                tenant-id: ${{ secrets.AZURE_TENANT_ID }}              
+                subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}   
+            - name: Zip deploy to the dev web app                       
+              run: |                                                   
+                az webapp deploy --resource-group "$RESOURCE_GROUP" --name "app-devops-dev-$NAME_SUFFIX" --src-path site.zip --type zip  
+            - name: Smoke test (dev)                                    
+              run: |                                                   
+                HOST=$(az webapp show --resource-group "$RESOURCE_GROUP" --name "app-devops-dev-$NAME_SUFFIX" --query defaultHostName -o tsv)  
+                echo "Checking https://$HOST/"                          
+                curl --fail --silent --show-error --retry 6 --retry-delay 10 "https://$HOST/" | grep -i "hello devops" 
+
+      deploy-test:                                                    
+           name: Deploy to test                                         
+           needs: deploy-dev                                             
+           runs-on: ubuntu-latest                                     
+           environment: test                                              
+           steps:                                                        
+            - name: Download the website artifact                      
+              uses: actions/download-artifact@v4                       
+              with:                                                    
+                name: website                                          
+            - name: Log in to Azure (OIDC)                             
+              uses: azure/login@v2                                     
+              with:                                                     
+                client-id: ${{ secrets.AZURE_CLIENT_ID }}               
+                tenant-id: ${{ secrets.AZURE_TENANT_ID }}              
+                subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}   
+            - name: Zip deploy to the test web app                       
+              run: |                                                   
+                az webapp deploy --resource-group "$RESOURCE_GROUP" --name "app-devops-test-$NAME_SUFFIX" --src-path site.zip --type zip  
+            - name: Smoke test (test)                                    
+              run: |                                                   
+                HOST=$(az webapp show --resource-group "$RESOURCE_GROUP" --name "app-devops-test-$NAME_SUFFIX" --query defaultHostName -o tsv)  
+                echo "Checking https://$HOST/"                          
+                curl --fail --silent --show-error --retry 6 --retry-delay 10 "https://$HOST/" | grep -i "hello devops"
+      deploy-prod:                                                    
+           name: Deploy to prod                                         
+           needs: deploy-test                                             
+           runs-on: ubuntu-latest                                     
+           environment: prod                                           
+           steps:                                                        
+            - name: Download the website artifact                      
+              uses: actions/download-artifact@v4                       
+              with:                                                    
+                name: website                                          
+            - name: Log in to Azure (OIDC)                             
+              uses: azure/login@v2                                     
+              with:                                                     
+                client-id: ${{ secrets.AZURE_CLIENT_ID }}               
+                tenant-id: ${{ secrets.AZURE_TENANT_ID }}              
+                subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}   
+            - name: Zip deploy to the prod web app                       
+              run: |                                                   
+                az webapp deploy --resource-group "$RESOURCE_GROUP" --name "app-devops-prod-$NAME_SUFFIX" --src-path site.zip --type zip  
+            - name: Smoke test (prod)                                    
+              run: |                                                   
+                HOST=$(az webapp show --resource-group "$RESOURCE_GROUP" --name "app-devops-prod-$NAME_SUFFIX" --query defaultHostName -o tsv)  
+                echo "Checking https://$HOST/"                          
+                curl --fail --silent --show-error --retry 6 --retry-delay 10 "https://$HOST/" | grep -i "hello devops" 

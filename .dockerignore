@@ -1,0 +1,6 @@
+clean.
+.git
+.github
+infra
+azure-pipelines.yml
+.md

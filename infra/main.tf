@@ -23,6 +23,11 @@ variable "name_suffix" {
   description = "Short unique suffix"
 }
 
+resource "azurerm_resource_group" "siteold" {
+  name     = "old-rg-devops-site"                                  
+  location = "westeurope"                                      
+}
+
 resource "azurerm_resource_group" "site" {
   name     = "rg-devops-site"                                  
   location = "westeurope"                                      

@@ -8,7 +8,7 @@ concurrency:
   group: website-delivery
   cancel-in-progress: false
 
-permisssion:
+permission:
   contents: read
   id-token: write
 

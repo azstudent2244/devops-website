@@ -136,3 +136,9 @@ jobs:
                 HOST=$(az webapp show --resource-group "$RESOURCE_GROUP" --name "app-devops-prod-$NAME_SUFFIX" --query defaultHostName -o tsv)  
                 echo "Checking https://$HOST/"                          
                 curl --fail --silent --show-error --retry 6 --retry-delay 10 "https://$HOST/" | grep -i "hello devops" 
+
+
+
+###########################
+
+            

@@ -2,7 +2,7 @@ name: Website Conainers CI/CD
 on:
   push:
     branches:
-      -main
+      - main
 
 concurrency:
   group: website-delivery

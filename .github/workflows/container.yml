@@ -60,5 +60,26 @@ jobs:
           terraform init
           terraform plan -out=tfplan
           terraform apply -auto-approve tfplan
-
-        
+  build:
+    name: Build and push the container image
+    needs: provision
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@4
+      - name: Log in to Azure (OIDC)
+        uses: azure/login@v2
+        with: 
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Build and push the image
+        run: |
+          ACR_NAME=$(az acr list --resource-group "$RESOURCE_GROUP" --query "[0].name" -o tsv)
+          ACR_SERVER=$(az acr list --resource-group "$RESOURCE_GROUP" --query "[0].loginServer" -o tsv)
+          ACR_USER=$(az acr credential show --name "$ACR_NAME" --query username -o tsv)
+          ACR_PASS=$(az acr credential show --name "$ACR_NAME" --query "passwords[0].value" -o tsv)
+          echo "::add-mask::$ACR_PASS"
+          echo "$ACR_PASS" | docker login "$ACR_SERVER" --username "$ACR_USER" --password-stdin
+          docker build --build-arg GIT_SHA="$GITHUB_SHA" --tag "$ACR_SERVER/$IMAGE_NAME:$GITHUB_SHA" .
+          docker push "$ACR_SERVER/$IMAGE_NAME:$GITHUB_SHA"

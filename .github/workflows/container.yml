@@ -83,3 +83,105 @@ jobs:
           echo "$ACR_PASS" | docker login "$ACR_SERVER" --username "$ACR_USER" --password-stdin
           docker build --build-arg GIT_SHA="$GITHUB_SHA" --tag "$ACR_SERVER/$IMAGE_NAME:$GITHUB_SHA" .
           docker push "$ACR_SERVER/$IMAGE_NAME:$GITHUB_SHA"
+
+  deploy-dev:
+    name: Deploy to Dev
+    needs: build
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - name: Log in to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Deploy the image to the dev container app
+        run: |
+          az extension add --name containerapp --upgrade --only-show-errors
+          ACR_SERVER=$(az acr list --resource-group "$RESOURCE_GROUP" --query "[0].loginServer" -o tsv)
+          az containerapp update --resource-group "$RESOURCE_GROUP" --name "ca-devops-dev-$NAME_SUFFIX" --image "$ACR_SERVER/$IMAGE_NAME:$GITHUB_SHA"
+      - name: Smoke test (dev)
+        run: |
+          FQDN=$(az containerapp show --resource-group "$RESOURCE_GROUP" --name "ca-devops-dev-$NAME_SUFFIX" --query properties.configuration.ingress.fqdn -o tsv)
+          echo "Checking https://$FQDN/version.txt for $GITHUB_SHA"
+          for i in $(seq 1 18); do
+            BODY=$(curl --fail --silent "https://$FQDN/version.txt" || true)
+            if [ "$BODY" = "$GITHUB_SHA" ]; then
+              echo "New version is live: $GITHUB_SHA" 
+              echo "Site: https://$FQDN/ (commit $GITHUB_SHA)" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+              echo "Attempt $i: not live yet, waiting 10 seconds"
+              sleep 10
+              done
+              echo "The new version did not come up in time"
+              exit 1
+
+  deploy-test:
+    name: Deploy to test
+    needs: deploy-dev
+    runs-on: ubuntu-latest
+    environment: test
+    steps:
+      - name: Log in to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Deploy the image to the test container app
+        run: |
+          az extension add --name containerapp --upgrade --only-show-errors
+          ACR_SERVER=$(az acr list --resource-group "$RESOURCE_GROUP" --query "[0].loginServer" -o tsv)
+          az containerapp update --resource-group "$RESOURCE_GROUP" --name "ca-devops-dev-$NAME_SUFFIX" --image "$ACR_SERVER/$IMAGE_NAME:$GITHUB_SHA"
+      - name: Smoke test (test)
+        run: |
+          FQDN=$(az containerapp show --resource-group "$RESOURCE_GROUP" --name "ca-devops-dev-$NAME_SUFFIX" --query properties.configuration.ingress.fqdn -o tsv)
+          echo "Checking https://$FQDN/version.txt for $GITHUB_SHA"
+          for i in $(seq 1 18); do
+            BODY=$(curl --fail --silent "https://$FQDN/version.txt" || true)
+            if [ "$BODY" = "$GITHUB_SHA" ]; then
+              echo "New version is live: $GITHUB_SHA" 
+              echo "Site: https://$FQDN/ (commit $GITHUB_SHA)" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+              echo "Attempt $i: not live yet, waiting 10 seconds"
+              sleep 10
+              done
+              echo "The new version did not come up in time"
+              exit 1
+
+  deploy-prod:
+    name: Deploy to prod
+    needs: deploy-test
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Log in to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Deploy the image to the test container app
+        run: |
+          az extension add --name containerapp --upgrade --only-show-errors
+          ACR_SERVER=$(az acr list --resource-group "$RESOURCE_GROUP" --query "[0].loginServer" -o tsv)
+          az containerapp update --resource-group "$RESOURCE_GROUP" --name "ca-devops-dev-$NAME_SUFFIX" --image "$ACR_SERVER/$IMAGE_NAME:$GITHUB_SHA"
+      - name: Smoke test (prod)
+        run: |
+          FQDN=$(az containerapp show --resource-group "$RESOURCE_GROUP" --name "ca-devops-dev-$NAME_SUFFIX" --query properties.configuration.ingress.fqdn -o tsv)
+          echo "Checking https://$FQDN/version.txt for $GITHUB_SHA"
+          for i in $(seq 1 18); do
+            BODY=$(curl --fail --silent "https://$FQDN/version.txt" || true)
+            if [ "$BODY" = "$GITHUB_SHA" ]; then
+              echo "New version is live: $GITHUB_SHA" 
+              echo "Site: https://$FQDN/ (commit $GITHUB_SHA)" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+              echo "Attempt $i: not live yet, waiting 10 seconds"
+              sleep 10
+              done
+              echo "The new version did not come up in time"
+              exit 1

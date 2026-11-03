@@ -134,10 +134,10 @@ jobs:
         run: |
           az extension add --name containerapp --upgrade --only-show-errors
           ACR_SERVER=$(az acr list --resource-group "$RESOURCE_GROUP" --query "[0].loginServer" -o tsv)
-          az containerapp update --resource-group "$RESOURCE_GROUP" --name "ca-devops-dev-$NAME_SUFFIX" --image "$ACR_SERVER/$IMAGE_NAME:$GITHUB_SHA"
+          az containerapp update --resource-group "$RESOURCE_GROUP" --name "ca-devops-test-$NAME_SUFFIX" --image "$ACR_SERVER/$IMAGE_NAME:$GITHUB_SHA"
       - name: Smoke test (test)
         run: |
-          FQDN=$(az containerapp show --resource-group "$RESOURCE_GROUP" --name "ca-devops-dev-$NAME_SUFFIX" --query properties.configuration.ingress.fqdn -o tsv)
+          FQDN=$(az containerapp show --resource-group "$RESOURCE_GROUP" --name "ca-devops-test-$NAME_SUFFIX" --query properties.configuration.ingress.fqdn -o tsv)
           echo "Checking https://$FQDN/version.txt for $GITHUB_SHA"
           for i in $(seq 1 18); do
             BODY=$(curl --fail --silent "https://$FQDN/version.txt" || true)
@@ -164,14 +164,14 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: Deploy the image to the test container app
+      - name: Deploy the image to the prod container app
         run: |
           az extension add --name containerapp --upgrade --only-show-errors
           ACR_SERVER=$(az acr list --resource-group "$RESOURCE_GROUP" --query "[0].loginServer" -o tsv)
-          az containerapp update --resource-group "$RESOURCE_GROUP" --name "ca-devops-dev-$NAME_SUFFIX" --image "$ACR_SERVER/$IMAGE_NAME:$GITHUB_SHA"
+          az containerapp update --resource-group "$RESOURCE_GROUP" --name "ca-devops-prod-$NAME_SUFFIX" --image "$ACR_SERVER/$IMAGE_NAME:$GITHUB_SHA"
       - name: Smoke test (prod)
         run: |
-          FQDN=$(az containerapp show --resource-group "$RESOURCE_GROUP" --name "ca-devops-dev-$NAME_SUFFIX" --query properties.configuration.ingress.fqdn -o tsv)
+          FQDN=$(az containerapp show --resource-group "$RESOURCE_GROUP" --name "ca-devops-prod-$NAME_SUFFIX" --query properties.configuration.ingress.fqdn -o tsv)
           echo "Checking https://$FQDN/version.txt for $GITHUB_SHA"
           for i in $(seq 1 18); do
             BODY=$(curl --fail --silent "https://$FQDN/version.txt" || true)
